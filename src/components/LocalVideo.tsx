@@ -18,22 +18,52 @@ function LocalVideo() {
     status: 'idle',
   });
 
-  const createVideo = useCreateVideo({
-    videoPlayerState,
-    setVideoPlayerState,
-  });
+  const videoPlayerRef = useRef<VideoPlayer | null>(null);
 
-  useDestroyVideoBeforeUnmount(
-    videoPlayerState.status === 'success' ? videoPlayerState.player : null,
-  );
+  const initializeVideo = useCallback(async () => {
+    if (videoPlayerRef.current) return;
 
-  useCreateVideoOnMount(createVideo);
+    setVideoPlayerState({status: 'loading'});
+
+    try {
+      const player = new VideoPlayer();
+      await player.initialize();
+
+      player.loop = true;
+      player.muted = false;
+      player.src = videoSource;
+
+      videoPlayerRef.current = player;
+      setVideoPlayerState({status: 'success', player});
+
+      player.play().catch((error: unknown) => {
+        console.error('Playback failed', error);
+      });
+    } catch (error: unknown) {
+      setVideoPlayerState({
+        status: 'error',
+        message:
+          'Failed to initialize video: ' +
+          (error instanceof Error ? error.message : String(error)),
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    initializeVideo();
+
+    return () => {
+      if (videoPlayerRef.current) {
+        videoPlayerRef.current.pause();
+        videoPlayerRef.current.deinitialize();
+        videoPlayerRef.current = null;
+      }
+    };
+  }, [initializeVideo]);
 
   if (videoPlayerState.status === 'success') {
     return (
       <View style={styles.videoContainer}>
-        <Text style={styles.text}>success</Text>
-
         <KeplerVideoView
           showControls={false}
           videoPlayer={videoPlayerState.player}
@@ -45,92 +75,6 @@ function LocalVideo() {
   }
 
   return <Text style={styles.text}>{videoPlayerState.status}</Text>;
-}
-
-type CreateVideoInputs = {
-  videoPlayerState: VideoPlayerState;
-  setVideoPlayerState: (state: VideoPlayerState) => void;
-};
-
-function useCreateVideo({
-  videoPlayerState,
-  setVideoPlayerState,
-}: CreateVideoInputs) {
-  return useCallback(
-    async function createVideo(): Promise<void> {
-      if (videoPlayerState.status === 'success') {
-        return;
-      } else if (videoPlayerState.status === 'loading') {
-        return;
-      }
-
-      setVideoPlayerState({status: 'loading'});
-
-      const player = new VideoPlayer();
-
-      try {
-        await player.initialize();
-      } catch (error: unknown) {
-        setVideoPlayerState({
-          status: 'error',
-          message:
-            'Failed to initialize video: ' +
-            (error instanceof Error ? error.message : String(error)),
-        });
-        return;
-      }
-
-      player.loop = true;
-      player.muted = false;
-      player.src = videoSource;
-
-      try {
-        await player.play();
-      } catch (error: unknown) {
-        destroyVideo(player);
-        setVideoPlayerState({
-          status: 'error',
-          message:
-            'Failed to play video: ' +
-            (error instanceof Error ? error.message : String(error)),
-        });
-        return;
-      }
-
-      setVideoPlayerState({status: 'success', player});
-    },
-    [videoPlayerState, setVideoPlayerState],
-  );
-}
-
-function useCreateVideoOnMount(createVideo: () => void) {
-  useEffect(
-    function createVideoOnMount() {
-      createVideo();
-    },
-    [createVideo],
-  );
-}
-
-function destroyVideo(player: VideoPlayer) {
-  player.pause();
-  player.deinitialize();
-}
-
-function useDestroyVideoBeforeUnmount(player: VideoPlayer | null) {
-  const playerRef = useRef<VideoPlayer | null>(null);
-  playerRef.current = player;
-
-  useEffect(function setupDestroyVideoBeforeUnmount() {
-    return function destroyVideoBeforeUnmount() {
-      if (!playerRef.current) {
-        return;
-      }
-
-      destroyVideo(playerRef.current);
-      playerRef.current = null;
-    };
-  }, []);
 }
 
 const styles = StyleSheet.create({
