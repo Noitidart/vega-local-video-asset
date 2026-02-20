@@ -11,7 +11,7 @@ type VideoPlayerState =
   | {status: 'error'; message: string}
   | {status: 'success'; player: VideoPlayer};
 
-const videoSource = 'https://www.w3schools.com/html/mov_bbb.mp4'; // require('../assets/mov_bbb.mp4');
+const videoSource = 'asset://mov_bbb.mp4';
 
 function LocalVideo() {
   const [videoPlayerState, setVideoPlayerState] = useState<VideoPlayerState>({

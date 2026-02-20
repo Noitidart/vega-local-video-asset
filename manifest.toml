@@ -5,6 +5,10 @@ title = "Basic UI React Native Application for project localvideoasset"
 version = "0.1.0"
 id = "com.amazondeveloper.localvideoasset"
 
+[[assets]]
+source = "assets/"
+destination = "assets/"
+
 [components]
 [[components.interactive]]
 id = "com.amazondeveloper.localvideoasset.main"
